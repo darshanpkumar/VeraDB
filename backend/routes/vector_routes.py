@@ -3,6 +3,10 @@ from fastapi import APIRouter
 from backend.database.vector_db import VectorDB
 from backend.models.vector_item import VectorItem
 from backend.schemas.vector_schema import VectorRequest, SearchRequest
+# 1. Append these new dependency imports to your existing collection group at the top
+from backend.schemas.text_schema import TextRequest
+from backend.services.embedding_services import embed
+from backend.schemas.search_text_schema import SearchTextRequest
 
 router = APIRouter()
 
@@ -101,4 +105,53 @@ def algorithms():
             "manhattan",
             "cosine"
         ]
+    }
+
+@router.post("/insert_text")
+def insert_text(request: TextRequest):
+    # 1. Turn the string into coordinates
+    vector_coordinates = embed(request.text)
+    
+    # 2. Package into your existing dataclass structure using the metadata field
+    item = VectorItem(
+        id=request.id,
+        vector=vector_coordinates,
+        metadata={"text": request.text}  # Store the text here!
+    )
+    
+    db.insert(item)
+    
+    return {
+        "message": "Text embedded and stored successfully with associated string metadata."
+    }
+
+@router.post("/search_text")
+def search_text(request: SearchTextRequest):
+    query_vector = embed(request.text)
+    
+    # Search our custom graph topology indexing layout structure
+    result = db.search(query_vector, algorithm="hnsw")
+    
+    if not result:
+        return {"message": "No vectors found matching request signature."}
+        
+    # Extract the top hit match safely using our robust check logic
+    if isinstance(result, list):
+        top_match = result[0]
+    else:
+        top_match = result
+
+    if isinstance(top_match, tuple):
+        item = top_match[0]
+    else:
+        item = top_match
+
+    # Stream the underlying natural text string right out of the metadata dictionary
+    matched_text = "No text stored for this record."
+    if item.metadata and "text" in item.metadata:
+        matched_text = item.metadata["text"]
+
+    return {
+        "id": item.id,
+        "text": matched_text  # Clean human string instead of 384 numbers!
     }
