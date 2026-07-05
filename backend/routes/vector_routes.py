@@ -7,6 +7,11 @@ from backend.schemas.vector_schema import VectorRequest, SearchRequest
 from backend.schemas.text_schema import TextRequest
 from backend.services.embedding_services import embed
 from backend.schemas.search_text_schema import SearchTextRequest
+from backend.schemas.pdf_schema import PDFRequest
+from backend.services.rag_service import ingest_pdf
+from backend.schemas.question_schema import QuestionRequest
+from backend.services.embedding_services import embed
+from backend.services.llm_service import ask_llm
 
 router = APIRouter()
 
@@ -154,4 +159,46 @@ def search_text(request: SearchTextRequest):
     return {
         "id": item.id,
         "text": matched_text  # Clean human string instead of 384 numbers!
+    }
+
+@router.post("/upload_pdf")
+def upload_pdf(request: PDFRequest):
+    chunks = ingest_pdf(request.path)
+    return {
+        "message": "PDF Indexed Successfully",
+        "chunks": chunks
+    }
+
+@router.post("/ask")
+def ask_pdf(request: QuestionRequest):
+    # 1. Vectorize incoming user question
+    query_vector = embed(request.question)
+    
+    # 2. Get the closest entry point from our active index
+    result = db.search(query_vector, algorithm="hnsw")
+    
+    if not result:
+        return {"message": "No matching documents found."}
+        
+    # 3. Pull all text fragments out of database tracking memory as a test bypass window
+    context_chunks = []
+    
+    # Access your db's master master list directly to let Gemini see your whole resume!
+    all_stored_items = getattr(db, "vectors", [result])
+    
+    for item in all_stored_items[:5]:  # Package up to top 5 chunks
+        if item and hasattr(item, "metadata") and item.metadata and "text" in item.metadata:
+            context_chunks.append(item.metadata["text"])
+            
+    # Combine retrieved sections into a single context structure
+    full_context = "\n\n".join(context_chunks)
+    
+    # 🔎 DEBUG PRINT: Keep track of exactly what Gemini reads
+    print("\n⚠️ [DEBUG] Full context window loaded:\n", full_context, "\n-------------------")
+    
+    # 4. Let Gemini generate the response using the full document window
+    answer = ask_llm(request.question, full_context)
+    
+    return {
+        "answer": answer
     }
