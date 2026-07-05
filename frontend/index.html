@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeraDB Studio</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="header-container">
+        <h1>🚀 VeraDB Studio</h1>
+        <div class="badge">Active Nodes: <span id="vector-badge">0</span></div>
+    </div>
+
+    <div class="card">
+        <h2>Insert Vector</h2>
+        <input id="id" placeholder="Vector ID">
+        <input id="vector" placeholder="1,2,3">
+        <button onclick="insertVector()">Insert</button>
+    </div>
+
+    <div class="card">
+        <h2>Search</h2>
+        <input id="query" placeholder="1,2,3">
+        <button onclick="searchVector()">Search</button>
+    </div>
+
+    <div class="card">
+        <h2>Statistics</h2>
+        <button onclick="getStats()">Load Stats</button>
+    </div>
+
+    <div class="card">
+        <h2>Delete Vector</h2>
+        <input id="deleteId" placeholder="Vector ID">
+        <button onclick="deleteVector()">Delete</button>
+    </div>
+
+    <div class="card">
+        <h2>Algorithms</h2>
+        <button onclick="getAlgorithms()">Show Algorithms</button>
+    </div>
+
+    <div id="output" class="output-card">Results will appear here...</div>
+
+    <script src="app.js"></script>
+</body>
+</html>
